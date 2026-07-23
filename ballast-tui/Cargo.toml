@@ -1,6 +1,13 @@
 [package]
 name = "ballast-tui"
-version = "0.1.0"
-edition = "2024"
+description = "ballast"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [dependencies]
+color-eyre.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true

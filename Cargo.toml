@@ -1,3 +1,21 @@
 [workspace]
 resolver = "3"
 members = ["ballast-core", "ballast-platform-linux","ballast-tui"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+authors = [ "doprz" ]
+repository = "https://github.com/doprz/ballast"
+
+[workspace.dependencies]
+color-eyre = "0.6.3"
+crossterm = "0.29.0"
+ratatui = "0.30.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
