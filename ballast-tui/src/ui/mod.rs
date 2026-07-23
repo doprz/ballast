@@ -1,9 +1,12 @@
-mod overview;
+pub mod disks;
+pub mod overview;
 
+const GLOBAL_KEYBINDS: &'static str = "[q]uit [tab]next";
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
 use ratatui::{
     Frame,
+    crossterm::event::KeyEvent,
     layout::{Constraint, Direction, Layout, Offset, Rect},
     style::{Color, Style},
     text::{Line, Span, Text},
@@ -12,7 +15,7 @@ use ratatui::{
 
 use crate::app::{App, Tab};
 
-pub fn draw(frame: &mut Frame, app: &App) {
+pub fn draw(frame: &mut Frame, app: &mut App) {
     let root_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -25,7 +28,14 @@ pub fn draw(frame: &mut Frame, app: &App) {
     draw_name_ver(frame, root_layout[0]);
     draw_tab_header(frame, root_layout[0] + Offset::new(14, 0), app);
     draw_active_tab(frame, root_layout[1], app);
-    draw_footer(frame, root_layout[2]);
+    draw_footer(frame, root_layout[2], app);
+}
+
+pub fn handle_key(key: KeyEvent, app: &mut App) {
+    match app.tab {
+        Tab::Disks => disks::handle_key(key, app),
+        _ => {}
+    }
 }
 
 fn draw_name_ver(frame: &mut Frame, area: Rect) {
@@ -52,16 +62,29 @@ fn draw_tab_header(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(tabs, area);
 }
 
-fn draw_active_tab(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_active_tab(frame: &mut Frame, area: Rect, app: &mut App) {
     match app.tab {
         Tab::Overview => overview::render(frame, area),
+        Tab::Disks => disks::render(frame, area, app),
+
         // TODO: add the rest of the tabs
         _ => overview::render(frame, area),
     }
 }
 
-fn draw_footer(frame: &mut Frame, area: Rect) {
+fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     // TODO: add per-tab keyboard shortcuts
-    let footer = Text::styled("[q]uit [tab]next", Style::default().dim());
+    let footer = Text::styled(GLOBAL_KEYBINDS, Style::default().dim());
     frame.render_widget(footer, area);
+
+    let mut local_kebinds = "";
+
+    match app.tab {
+        Tab::Disks => local_kebinds = disks::LOCAL_KEYBINDS,
+        _ => {}
+    }
+    frame.render_widget(
+        local_kebinds,
+        area + Offset::new(GLOBAL_KEYBINDS.len() as i32 + 1, 0),
+    );
 }

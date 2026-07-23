@@ -2,12 +2,13 @@ use ratatui::DefaultTerminal;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use std::time::Duration;
 
-use crate::ui;
+use crate::ui::{self, disks::DisksState};
 
 pub const POLL_TIME_MS: u64 = 1000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
+    #[default]
     Overview,
     Disks,
     Zfs,
@@ -37,23 +38,22 @@ impl Tab {
     }
 }
 
+#[derive(Default)]
 pub struct App {
     pub tab: Tab,
     pub should_quit: bool,
-    // TODO: per-tab state
+
+    pub disks: DisksState,
 }
 
 impl App {
     pub fn new() -> Self {
-        Self {
-            tab: Tab::Overview,
-            should_quit: false,
-        }
+        Self::default()
     }
 
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
         while !self.should_quit {
-            terminal.draw(|frame| ui::draw(frame, &self))?;
+            terminal.draw(|frame| ui::draw(frame, &mut self))?;
             self.handle_events()?;
         }
 
@@ -77,7 +77,8 @@ impl App {
                     let idx = c.to_digit(10).unwrap() as usize - 1;
                     self.tab = Tab::ALL[idx];
                 }
-                _ => {}
+                // Forward non-global keybinds
+                _ => ui::handle_key(key, self),
             }
         }
 
