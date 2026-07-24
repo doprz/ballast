@@ -97,6 +97,7 @@ dependencies = [
 name = "ballast-tui"
 version = "0.1.0"
 dependencies = [
+ "ballast-core",
  "ballast-platform-linux",
  "color-eyre",
  "ratatui",

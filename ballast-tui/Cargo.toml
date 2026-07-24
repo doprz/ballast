@@ -12,6 +12,7 @@ name = "ballast"
 path = "src/main.rs"
 
 [dependencies]
+ballast-core = { version = "0.1.0", path = "../ballast-core" }
 ballast-platform-linux = { version = "0.1.0", path = "../ballast-platform-linux" }
 color-eyre.workspace = true
 ratatui.workspace = true

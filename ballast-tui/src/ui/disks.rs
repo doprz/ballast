@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use ballast_core::model::disk::{DeviceKind, DiskDevice};
 use ballast_platform_linux::enumerate_block_devices;
 use ratatui::style::Style;
 use ratatui::{
@@ -28,14 +31,15 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
         "lat_ms",
         "qd",
         "mount",
-    ]);
+    ])
+    .style(Style::new().bold());
 
     // NOTE: there must be a better way to do this
     let widths = [
         Constraint::Length(12),
-        Constraint::Length(12),
-        Constraint::Length(12),
-        Constraint::Length(12),
+        Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(24),
         Constraint::Length(12),
         Constraint::Length(12),
         Constraint::Length(12),
@@ -45,11 +49,12 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
     ];
 
     let block_devices = enumerate_block_devices().unwrap();
+    let dev_tree_rows = build_dev_tree(&block_devices);
 
     // TODO: get I/O throughput
-    let rows: Vec<Row> = block_devices
+    let rows: Vec<Row> = dev_tree_rows
         .iter()
-        .map(|dev| {
+        .map(|(dev, prefix)| {
             let used_percent = match (dev.used, dev.size) {
                 (Some(used), Some(size)) if size > 0 => {
                     format!("{:.1}%", (used as f64 / size as f64) * 100.0)
@@ -57,7 +62,7 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
                 _ => "-".to_string(),
             };
             Row::new([
-                dev.id.clone(),
+                format!("{prefix}{}", dev.id),
                 dev.fstype.clone().unwrap_or_else(|| "-".to_string()),
                 used_percent,
                 format!("{}/{}", format_bytes(dev.used), format_bytes(dev.size)),
@@ -112,4 +117,40 @@ fn format_bytes(bytes: Option<u64>) -> String {
         unit_idx += 1;
     }
     format!("{:.1} {}", size, UNITS[unit_idx])
+}
+
+fn build_dev_tree(devices: &[DiskDevice]) -> Vec<(&DiskDevice, &'static str)> {
+    let mut parents: Vec<&DiskDevice> = Vec::new();
+    let mut children: HashMap<&str, Vec<&DiskDevice>> = HashMap::new();
+
+    for dev in devices {
+        match &dev.kind {
+            DeviceKind::Partition { parent, .. } => {
+                children.entry(parent.as_str()).or_default().push(dev);
+            }
+            _ => parents.push(dev),
+        }
+    }
+
+    // `fs::read_dir` order isn't guaranteed; sort for stable output
+    parents.sort_by(|a, b| a.id.cmp(&b.id));
+    for kids in children.values_mut() {
+        kids.sort_by_key(|d| match &d.kind {
+            DeviceKind::Partition { part_num, .. } => *part_num,
+            _ => 0,
+        });
+    }
+
+    let mut rows = Vec::with_capacity(devices.len());
+    for parent in parents {
+        rows.push((parent, ""));
+        if let Some(kids) = children.get(parent.id.as_str()) {
+            let last_idx = kids.len().saturating_sub(1);
+            for (i, kid) in kids.iter().enumerate() {
+                let prefix = if i == last_idx { "└─" } else { "├─" };
+                rows.push((*kid, prefix));
+            }
+        }
+    }
+    rows
 }
