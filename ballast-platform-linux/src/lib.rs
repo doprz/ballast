@@ -8,6 +8,8 @@ use ballast_core::model::disk::{DeviceKind, DiskDevice};
 use color_eyre::eyre::{self, Context};
 use nix::sys::statvfs::statvfs;
 
+pub mod disk_io;
+
 pub fn enumerate_block_devices() -> eyre::Result<Vec<DiskDevice>> {
     let mut out = Vec::new();
     let mount_map = read_mount_map().wrap_err("failed to read /proc/mounts")?;
