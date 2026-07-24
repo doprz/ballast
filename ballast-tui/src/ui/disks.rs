@@ -17,6 +17,8 @@ pub const LOCAL_KEYBINDS: &'static str = "[p]artitions [l]oopback";
 #[derive(Default)]
 pub struct DisksState {
     pub table_state: TableState,
+    pub show_partitions: bool,
+    pub show_loopback: bool,
 }
 
 pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
@@ -49,7 +51,8 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
     ];
 
     let block_devices = enumerate_block_devices().unwrap();
-    let dev_tree_rows = build_dev_tree(&block_devices);
+    let state = &mut app.disks;
+    let dev_tree_rows = build_dev_tree(&block_devices, state.show_partitions, state.show_loopback);
 
     // TODO: get I/O throughput
     let rows: Vec<Row> = dev_tree_rows
@@ -99,6 +102,9 @@ pub fn handle_key(key: KeyEvent, app: &mut App) {
         KeyCode::Char('k') | KeyCode::Up => state.table_state.select_previous(),
         KeyCode::Char('g') => state.table_state.select_first(),
         KeyCode::Char('G') => state.table_state.select_last(),
+        // Local-keybinds
+        KeyCode::Char('p') => state.show_partitions = !state.show_partitions,
+        KeyCode::Char('l') => state.show_loopback = !state.show_loopback,
         _ => {}
     }
 }
@@ -119,7 +125,11 @@ fn format_bytes(bytes: Option<u64>) -> String {
     format!("{:.1} {}", size, UNITS[unit_idx])
 }
 
-fn build_dev_tree(devices: &[DiskDevice]) -> Vec<(&DiskDevice, &'static str)> {
+fn build_dev_tree(
+    devices: &[DiskDevice],
+    show_partitions: bool,
+    show_loopback: bool,
+) -> Vec<(&DiskDevice, &'static str)> {
     let mut parents: Vec<&DiskDevice> = Vec::new();
     let mut children: HashMap<&str, Vec<&DiskDevice>> = HashMap::new();
 
@@ -128,6 +138,7 @@ fn build_dev_tree(devices: &[DiskDevice]) -> Vec<(&DiskDevice, &'static str)> {
             DeviceKind::Partition { parent, .. } => {
                 children.entry(parent.as_str()).or_default().push(dev);
             }
+            DeviceKind::Loopback { .. } if !show_loopback => continue,
             _ => parents.push(dev),
         }
     }
@@ -144,6 +155,11 @@ fn build_dev_tree(devices: &[DiskDevice]) -> Vec<(&DiskDevice, &'static str)> {
     let mut rows = Vec::with_capacity(devices.len());
     for parent in parents {
         rows.push((parent, ""));
+
+        if !show_partitions {
+            continue;
+        }
+
         if let Some(kids) = children.get(parent.id.as_str()) {
             let last_idx = kids.len().saturating_sub(1);
             for (i, kid) in kids.iter().enumerate() {
