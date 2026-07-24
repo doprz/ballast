@@ -68,7 +68,7 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
                 format!("{prefix}{}", dev.id),
                 dev.fstype.clone().unwrap_or_else(|| "-".to_string()),
                 used_percent,
-                format!("{}/{}", format_bytes(dev.used), format_bytes(dev.size)),
+                format_used_total_col(dev.used, dev.size),
                 "-".to_string(),
                 "-".to_string(),
                 "-".to_string(),
@@ -123,6 +123,12 @@ fn format_bytes(bytes: Option<u64>) -> String {
         unit_idx += 1;
     }
     format!("{:.1} {}", size, UNITS[unit_idx])
+}
+
+/// Formats used/total as two fixed-width, right-aligned fields so the
+/// separating '/' lines up across rows regardless of unit.
+fn format_used_total_col(used: Option<u64>, size: Option<u64>) -> String {
+    format!("{:>10}/{:>10}", format_bytes(used), format_bytes(size))
 }
 
 fn build_dev_tree(
