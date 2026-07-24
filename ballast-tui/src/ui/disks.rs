@@ -14,11 +14,20 @@ use crate::app::App;
 
 pub const LOCAL_KEYBINDS: &'static str = "[p]artitions [l]oopback";
 
-#[derive(Default)]
 pub struct DisksState {
     pub table_state: TableState,
     pub show_partitions: bool,
     pub show_loopback: bool,
+}
+
+impl Default for DisksState {
+    fn default() -> Self {
+        Self {
+            table_state: TableState::default(),
+            show_partitions: true,
+            show_loopback: false,
+        }
+    }
 }
 
 pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
